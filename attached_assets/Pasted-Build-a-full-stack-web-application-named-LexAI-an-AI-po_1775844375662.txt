@@ -1,0 +1,104 @@
+Build a full-stack web application named LexAI, an AI-powered legal assistant platform with authentication, document analysis, and lawyer marketplace features.
+
+TECH STACK REQUIREMENTS
+Frontend: React (with Vite), Tailwind CSS
+Scheduling: Google Calendar API (generate Google Meet links)
+Deployment-ready structure
+📌 CORE FEATURES
+🔐 AUTHENTICATION SYSTEM
+User Signup:
+Fields: Email, First Name, Last Name, Password
+Role selection:
+Normal User
+Lawyer
+Login:
+Email + Password
+Google OAuth Login
+Role-based access:
+Store user role (NORMAL / LAWYER)
+Redirect based on role
+⚖️ LAWYER ONBOARDING
+
+If user selects "Lawyer":
+
+Collect:
+Bar Number
+Years of Experience
+Languages
+Specialization
+Age
+Upload verification documents (PDF/Image)
+Store verification status (Pending / Approved / Rejected)
+Admin-ready structure (even if not implemented)
+🤖 AI LEGAL ASSISTANT (MAIN FEATURE)
+Chat Interface (like ChatGPT)
+Clean chat UI (left sidebar history + main chat)
+Store chat history per user
+File Upload
+Accept: PDF, TXT, JPG, PNG
+Store files securely
+Extract text from documents
+AI Capabilities:
+
+When user uploads a document, allow:
+
+Ask Questions about document (RAG-based)
+Translate document
+Simplify legal text (plain English)
+Detect flaws / risks
+Provide legal suggestions (with disclaimer)
+AI Behavior:
+Use RAG (Retrieval-Augmented Generation)
+Split documents into chunks
+Embed using vector DB PGvector
+Retrieve relevant context for each query
+Prompt Engineering:
+
+Use structured prompt:
+
+System: "You are a legal assistant. Do not give definitive legal advice. Always add disclaimer."
+Include:
+Extracted document chunks
+User query
+Context history
+👨‍⚖️ LAWYERNET (SECOND TAB)
+Features:
+List all lawyers
+Name
+Rating
+Languages
+Experience
+Specialization
+Lawyer Profile Page:
+Full details
+Reviews
+Availability
+Chat with Lawyer:
+Real-time messaging (Socket.io)
+Store chat history
+Schedule Meeting:
+Select time slot
+Generate Google Meet link via API
+Store booking in DB
+💳 MEMBERSHIP SYSTEM
+Plans:
+Free Plan:
+2 document uploads/day
+Limited AI queries
+Premium Plan ($10/month):
+Unlimited uploads
+Unlimited queries
+Features:
+Middleware to enforce limits
+Track usage per user
+Stripe integration (optional but preferred)
+⚙️ SETTINGS PAGE
+Change language preference
+View/update profile
+Upgrade to premium
+Manage subscriptions
+🌐 MULTI-LANGUAGE SUPPORT
+Store preferred language in user profile
+Translate UI and AI responses dynamically
+
+Provide only the React application, no need to generate for Backend code. 

@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LexAI - AI Legal Assistant Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: users
+    description: User profile operations
+  - name: chat
+    description: AI chat operations
+  - name: documents
+    description: Document management operations
+  - name: lawyers
+    description: Lawyer marketplace operations
+  - name: messages
+    description: Direct messaging operations
+  - name: bookings
+    description: Meeting scheduling operations
+  - name: membership
+    description: Membership and subscription operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +40,631 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Login with email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  # USERS
+  /users/profile:
+    get:
+      operationId: getUserProfile
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    patch:
+      operationId: updateUserProfile
+      tags: [users]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /users/lawyer-profile:
+    post:
+      operationId: createLawyerProfile
+      tags: [users]
+      summary: Create or update lawyer onboarding profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LawyerOnboardingBody"
+      responses:
+        "201":
+          description: Lawyer profile created/updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LawyerProfile"
+
+  /users/usage:
+    get:
+      operationId: getUserUsage
+      tags: [users]
+      summary: Get user's daily usage stats
+      responses:
+        "200":
+          description: Usage stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageStats"
+
+  # CHAT
+  /chat/sessions:
+    get:
+      operationId: getChatSessions
+      tags: [chat]
+      summary: Get all chat sessions for current user
+      responses:
+        "200":
+          description: List of chat sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatSession"
+    post:
+      operationId: createChatSession
+      tags: [chat]
+      summary: Create a new chat session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChatSessionBody"
+      responses:
+        "201":
+          description: Chat session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSession"
+
+  /chat/sessions/{sessionId}:
+    get:
+      operationId: getChatSession
+      tags: [chat]
+      summary: Get chat session with messages
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Chat session with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSessionDetail"
+    delete:
+      operationId: deleteChatSession
+      tags: [chat]
+      summary: Delete a chat session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  /chat/sessions/{sessionId}/messages:
+    post:
+      operationId: sendMessage
+      tags: [chat]
+      summary: Send a message in a chat session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageBody"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  # DOCUMENTS
+  /documents:
+    get:
+      operationId: getDocuments
+      tags: [documents]
+      summary: Get all documents for current user
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+    post:
+      operationId: uploadDocument
+      tags: [documents]
+      summary: Upload a document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadDocumentBody"
+      responses:
+        "201":
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+
+  /documents/{documentId}:
+    get:
+      operationId: getDocument
+      tags: [documents]
+      summary: Get a document by ID
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      summary: Delete a document
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  /documents/{documentId}/analyze:
+    post:
+      operationId: analyzeDocument
+      tags: [documents]
+      summary: Analyze a document with AI (summarize, simplify, detect risks, translate)
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeDocumentBody"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentAnalysis"
+
+  # LAWYERS
+  /lawyers:
+    get:
+      operationId: getLawyers
+      tags: [lawyers]
+      summary: Get list of lawyers with optional filters
+      parameters:
+        - name: specialization
+          in: query
+          schema:
+            type: string
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: minRating
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of lawyers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LawyerCard"
+
+  /lawyers/{lawyerId}:
+    get:
+      operationId: getLawyer
+      tags: [lawyers]
+      summary: Get lawyer profile by ID
+      parameters:
+        - name: lawyerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lawyer profile detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LawyerDetail"
+
+  /lawyers/{lawyerId}/reviews:
+    get:
+      operationId: getLawyerReviews
+      tags: [lawyers]
+      summary: Get reviews for a lawyer
+      parameters:
+        - name: lawyerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+    post:
+      operationId: addLawyerReview
+      tags: [lawyers]
+      summary: Add a review for a lawyer
+      parameters:
+        - name: lawyerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddReviewBody"
+      responses:
+        "201":
+          description: Review added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+
+  /lawyers/stats:
+    get:
+      operationId: getLawyerStats
+      tags: [lawyers]
+      summary: Get marketplace stats (specialization breakdown, top lawyers, etc.)
+      responses:
+        "200":
+          description: Marketplace stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LawyerStats"
+
+  # MESSAGES
+  /messages/conversations:
+    get:
+      operationId: getConversations
+      tags: [messages]
+      summary: Get all direct message conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+
+  /messages/conversations/{conversationId}:
+    get:
+      operationId: getConversation
+      tags: [messages]
+      summary: Get messages in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+
+  /messages/conversations/{conversationId}/send:
+    post:
+      operationId: sendDirectMessage
+      tags: [messages]
+      summary: Send a direct message in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendDirectMessageBody"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectMessage"
+
+  /messages/start:
+    post:
+      operationId: startConversation
+      tags: [messages]
+      summary: Start a new conversation with a lawyer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartConversationBody"
+      responses:
+        "201":
+          description: Conversation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  # BOOKINGS
+  /bookings:
+    get:
+      operationId: getBookings
+      tags: [bookings]
+      summary: Get user bookings
+      responses:
+        "200":
+          description: Bookings list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Schedule a meeting with a lawyer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingBody"
+      responses:
+        "201":
+          description: Booking created with Meet link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+  /bookings/{bookingId}:
+    get:
+      operationId: getBooking
+      tags: [bookings]
+      summary: Get booking by ID
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+    delete:
+      operationId: cancelBooking
+      tags: [bookings]
+      summary: Cancel a booking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+
+  /lawyers/{lawyerId}/availability:
+    get:
+      operationId: getLawyerAvailability
+      tags: [bookings]
+      summary: Get available time slots for a lawyer
+      parameters:
+        - name: lawyerId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Available time slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimeSlot"
+
+  # MEMBERSHIP
+  /membership:
+    get:
+      operationId: getMembership
+      tags: [membership]
+      summary: Get current user membership plan
+      responses:
+        "200":
+          description: Membership info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+
+  /membership/upgrade:
+    post:
+      operationId: upgradeMembership
+      tags: [membership]
+      summary: Upgrade to premium membership
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpgradeMembershipBody"
+      responses:
+        "200":
+          description: Membership upgraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+
+  /membership/cancel:
+    post:
+      operationId: cancelMembership
+      tags: [membership]
+      summary: Cancel premium membership
+      responses:
+        "200":
+          description: Membership cancelled
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +672,580 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    # AUTH SCHEMAS
+    RegisterBody:
+      type: object
+      properties:
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [NORMAL, LAWYER]
+        language:
+          type: string
+      required: [email, firstName, lastName, password, role]
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required: [user]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [NORMAL, LAWYER]
+        avatarUrl:
+          type: string
+        language:
+          type: string
+        membershipPlan:
+          type: string
+          enum: [FREE, PREMIUM]
+        createdAt:
+          type: string
+      required: [id, email, firstName, lastName, role, membershipPlan]
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+        avatarUrl:
+          type: string
+        language:
+          type: string
+        membershipPlan:
+          type: string
+        bio:
+          type: string
+        phone:
+          type: string
+        createdAt:
+          type: string
+      required: [id, email, firstName, lastName, role, membershipPlan]
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        language:
+          type: string
+        bio:
+          type: string
+        phone:
+          type: string
+        avatarUrl:
+          type: string
+
+    LawyerOnboardingBody:
+      type: object
+      properties:
+        barNumber:
+          type: string
+        yearsOfExperience:
+          type: integer
+        languages:
+          type: array
+          items:
+            type: string
+        specialization:
+          type: string
+        age:
+          type: integer
+        bio:
+          type: string
+        hourlyRate:
+          type: number
+      required: [barNumber, yearsOfExperience, languages, specialization, age]
+
+    LawyerProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        barNumber:
+          type: string
+        yearsOfExperience:
+          type: integer
+        languages:
+          type: array
+          items:
+            type: string
+        specialization:
+          type: string
+        age:
+          type: integer
+        verificationStatus:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        bio:
+          type: string
+        hourlyRate:
+          type: number
+        rating:
+          type: number
+      required: [id, userId, barNumber, yearsOfExperience, languages, specialization, age, verificationStatus]
+
+    UsageStats:
+      type: object
+      properties:
+        documentsUploadedToday:
+          type: integer
+        aiQueriesUsedToday:
+          type: integer
+        documentsLimit:
+          type: integer
+        aiQueriesLimit:
+          type: integer
+        membershipPlan:
+          type: string
+      required: [documentsUploadedToday, aiQueriesUsedToday, documentsLimit, aiQueriesLimit, membershipPlan]
+
+    # CHAT SCHEMAS
+    ChatSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        documentId:
+          type: integer
+        lastMessage:
+          type: string
+        messageCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, title, messageCount, createdAt, updatedAt]
+
+    ChatSessionDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        documentId:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, title, messages, createdAt, updatedAt]
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        createdAt:
+          type: string
+      required: [id, sessionId, role, content, createdAt]
+
+    CreateChatSessionBody:
+      type: object
+      properties:
+        title:
+          type: string
+        documentId:
+          type: integer
+      required: [title]
+
+    SendMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+        documentId:
+          type: integer
+      required: [content]
+
+    # DOCUMENT SCHEMAS
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        fileType:
+          type: string
+        fileSize:
+          type: integer
+        extractedText:
+          type: string
+        summary:
+          type: string
+        uploadedAt:
+          type: string
+      required: [id, userId, name, fileType, uploadedAt]
+
+    UploadDocumentBody:
+      type: object
+      properties:
+        name:
+          type: string
+        fileType:
+          type: string
+        fileSize:
+          type: integer
+        content:
+          type: string
+      required: [name, fileType]
+
+    AnalyzeDocumentBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [summarize, simplify, detect_risks, translate, ask_question]
+        question:
+          type: string
+        targetLanguage:
+          type: string
+      required: [action]
+
+    DocumentAnalysis:
+      type: object
+      properties:
+        documentId:
+          type: integer
+        action:
+          type: string
+        result:
+          type: string
+        disclaimer:
+          type: string
+      required: [documentId, action, result]
+
+    # LAWYER SCHEMAS
+    LawyerCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        avatarUrl:
+          type: string
+        specialization:
+          type: string
+        languages:
+          type: array
+          items:
+            type: string
+        yearsOfExperience:
+          type: integer
+        rating:
+          type: number
+        reviewCount:
+          type: integer
+        hourlyRate:
+          type: number
+        verificationStatus:
+          type: string
+      required: [id, userId, firstName, lastName, specialization, languages, yearsOfExperience, rating, reviewCount]
+
+    LawyerDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        avatarUrl:
+          type: string
+        specialization:
+          type: string
+        languages:
+          type: array
+          items:
+            type: string
+        yearsOfExperience:
+          type: integer
+        rating:
+          type: number
+        reviewCount:
+          type: integer
+        hourlyRate:
+          type: number
+        bio:
+          type: string
+        barNumber:
+          type: string
+        verificationStatus:
+          type: string
+        availability:
+          type: array
+          items:
+            type: string
+      required: [id, userId, firstName, lastName, specialization, languages, yearsOfExperience, rating, reviewCount]
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        lawyerId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+        rating:
+          type: number
+        comment:
+          type: string
+        createdAt:
+          type: string
+      required: [id, lawyerId, userId, rating, createdAt]
+
+    AddReviewBody:
+      type: object
+      properties:
+        rating:
+          type: number
+        comment:
+          type: string
+      required: [rating]
+
+    LawyerStats:
+      type: object
+      properties:
+        totalLawyers:
+          type: integer
+        bySpecialization:
+          type: array
+          items:
+            type: object
+            properties:
+              specialization:
+                type: string
+              count:
+                type: integer
+            required: [specialization, count]
+        topRatedLawyers:
+          type: array
+          items:
+            $ref: "#/components/schemas/LawyerCard"
+        averageRating:
+          type: number
+      required: [totalLawyers, bySpecialization, topRatedLawyers, averageRating]
+
+    # MESSAGES SCHEMAS
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        lawyerId:
+          type: integer
+        lawyerName:
+          type: string
+        lawyerAvatarUrl:
+          type: string
+        lastMessage:
+          type: string
+        lastMessageAt:
+          type: string
+        unreadCount:
+          type: integer
+      required: [id, lawyerId, lawyerName, unreadCount]
+
+    ConversationDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        lawyerId:
+          type: integer
+        lawyerName:
+          type: string
+        lawyerAvatarUrl:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectMessage"
+      required: [id, lawyerId, lawyerName, messages]
+
+    DirectMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        senderId:
+          type: integer
+        content:
+          type: string
+        createdAt:
+          type: string
+      required: [id, conversationId, senderId, content, createdAt]
+
+    SendDirectMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required: [content]
+
+    StartConversationBody:
+      type: object
+      properties:
+        lawyerId:
+          type: integer
+        initialMessage:
+          type: string
+      required: [lawyerId]
+
+    # BOOKING SCHEMAS
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        lawyerId:
+          type: integer
+        lawyerName:
+          type: string
+        lawyerAvatarUrl:
+          type: string
+        scheduledAt:
+          type: string
+        duration:
+          type: integer
+        meetLink:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED]
+        notes:
+          type: string
+      required: [id, userId, lawyerId, lawyerName, scheduledAt, duration, status]
+
+    CreateBookingBody:
+      type: object
+      properties:
+        lawyerId:
+          type: integer
+        scheduledAt:
+          type: string
+        duration:
+          type: integer
+        notes:
+          type: string
+      required: [lawyerId, scheduledAt, duration]
+
+    TimeSlot:
+      type: object
+      properties:
+        startTime:
+          type: string
+        endTime:
+          type: string
+        available:
+          type: boolean
+      required: [startTime, endTime, available]
+
+    # MEMBERSHIP SCHEMAS
+    Membership:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [FREE, PREMIUM]
+        startedAt:
+          type: string
+        expiresAt:
+          type: string
+        documentsLimit:
+          type: integer
+        aiQueriesLimit:
+          type: integer
+        features:
+          type: array
+          items:
+            type: string
+      required: [plan, documentsLimit, aiQueriesLimit, features]
+
+    UpgradeMembershipBody:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [PREMIUM]
+        paymentMethod:
+          type: string
+      required: [plan]
