@@ -19,6 +19,8 @@ import type {
 import type {
   AddReviewBody,
   AnalyzeDocumentBody,
+  AssistantQuery,
+  AssistantQueryBody,
   AuthResponse,
   Booking,
   ChatMessage,
@@ -28,6 +30,7 @@ import type {
   ConversationDetail,
   CreateBookingBody,
   CreateChatSessionBody,
+  CreateProjectBody,
   DirectMessage,
   Document,
   DocumentAnalysis,
@@ -41,15 +44,20 @@ import type {
   LawyerStats,
   LoginBody,
   Membership,
+  Project,
   RegisterBody,
   Review,
   SendDirectMessageBody,
   SendMessageBody,
   StartConversationBody,
+  Thread,
+  ThreadDetail,
   TimeSlot,
   UpdateProfileBody,
   UpgradeMembershipBody,
   UploadDocumentBody,
+  UploadMultipleFiles201,
+  UploadMultipleFilesBody,
   UsageStats,
   User,
   UserProfile,
@@ -1203,6 +1211,855 @@ export const useSendMessage = <
   TContext
 > => {
   return useMutation(getSendMessageMutationOptions(options));
+};
+
+/**
+ * @summary Get all projects
+ */
+export const getGetProjectsUrl = () => {
+  return `/api/assistant/project`;
+};
+
+export const getProjects = async (
+  options?: RequestInit,
+): Promise<Project[]> => {
+  return customFetch<Project[]>(getGetProjectsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectsQueryKey = () => {
+  return [`/api/assistant/project`] as const;
+};
+
+export const getGetProjectsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetProjectsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjects>>> = ({
+    signal,
+  }) => getProjects({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjects>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjects>>
+>;
+export type GetProjectsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all projects
+ */
+
+export function useGetProjects<
+  TData = Awaited<ReturnType<typeof getProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new project
+ */
+export const getCreateProjectUrl = () => {
+  return `/api/assistant/project/create`;
+};
+
+export const createProject = async (
+  createProjectBody: CreateProjectBody,
+  options?: RequestInit,
+): Promise<Project> => {
+  return customFetch<Project>(getCreateProjectUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProjectBody),
+  });
+};
+
+export const getCreateProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProject>>,
+    TError,
+    { data: BodyType<CreateProjectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProject>>,
+  TError,
+  { data: BodyType<CreateProjectBody> },
+  TContext
+> => {
+  const mutationKey = ["createProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProject>>,
+    { data: BodyType<CreateProjectBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProject(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProject>>
+>;
+export type CreateProjectMutationBody = BodyType<CreateProjectBody>;
+export type CreateProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new project
+ */
+export const useCreateProject = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProject>>,
+    TError,
+    { data: BodyType<CreateProjectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProject>>,
+  TError,
+  { data: BodyType<CreateProjectBody> },
+  TContext
+> => {
+  return useMutation(getCreateProjectMutationOptions(options));
+};
+
+/**
+ * @summary Get threads for a project
+ */
+export const getGetProjectThreadsUrl = (projectUuid: string) => {
+  return `/api/assistant/project/${projectUuid}/threads`;
+};
+
+export const getProjectThreads = async (
+  projectUuid: string,
+  options?: RequestInit,
+): Promise<Thread[]> => {
+  return customFetch<Thread[]>(getGetProjectThreadsUrl(projectUuid), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectThreadsQueryKey = (projectUuid: string) => {
+  return [`/api/assistant/project/${projectUuid}/threads`] as const;
+};
+
+export const getGetProjectThreadsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectThreads>>,
+  TError = ErrorType<unknown>,
+>(
+  projectUuid: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectThreads>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProjectThreadsQueryKey(projectUuid);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProjectThreads>>
+  > = ({ signal }) =>
+    getProjectThreads(projectUuid, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectUuid,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectThreads>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectThreadsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectThreads>>
+>;
+export type GetProjectThreadsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get threads for a project
+ */
+
+export function useGetProjectThreads<
+  TData = Awaited<ReturnType<typeof getProjectThreads>>,
+  TError = ErrorType<unknown>,
+>(
+  projectUuid: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectThreads>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectThreadsQueryOptions(projectUuid, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a query within a project
+ */
+export const getCreateProjectQueryUrl = (projectUuid: string) => {
+  return `/api/assistant/project/${projectUuid}/query`;
+};
+
+export const createProjectQuery = async (
+  projectUuid: string,
+  assistantQueryBody: AssistantQueryBody,
+  options?: RequestInit,
+): Promise<AssistantQuery> => {
+  return customFetch<AssistantQuery>(getCreateProjectQueryUrl(projectUuid), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(assistantQueryBody),
+  });
+};
+
+export const getCreateProjectQueryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectQuery>>,
+    TError,
+    { projectUuid: string; data: BodyType<AssistantQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProjectQuery>>,
+  TError,
+  { projectUuid: string; data: BodyType<AssistantQueryBody> },
+  TContext
+> => {
+  const mutationKey = ["createProjectQuery"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProjectQuery>>,
+    { projectUuid: string; data: BodyType<AssistantQueryBody> }
+  > = (props) => {
+    const { projectUuid, data } = props ?? {};
+
+    return createProjectQuery(projectUuid, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProjectQueryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProjectQuery>>
+>;
+export type CreateProjectQueryMutationBody = BodyType<AssistantQueryBody>;
+export type CreateProjectQueryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a query within a project
+ */
+export const useCreateProjectQuery = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectQuery>>,
+    TError,
+    { projectUuid: string; data: BodyType<AssistantQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProjectQuery>>,
+  TError,
+  { projectUuid: string; data: BodyType<AssistantQueryBody> },
+  TContext
+> => {
+  return useMutation(getCreateProjectQueryMutationOptions(options));
+};
+
+/**
+ * @summary Create a query within a thread
+ */
+export const getCreateThreadQueryUrl = (threadUuid: string) => {
+  return `/api/assistant/thread/${threadUuid}/query`;
+};
+
+export const createThreadQuery = async (
+  threadUuid: string,
+  assistantQueryBody: AssistantQueryBody,
+  options?: RequestInit,
+): Promise<AssistantQuery> => {
+  return customFetch<AssistantQuery>(getCreateThreadQueryUrl(threadUuid), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(assistantQueryBody),
+  });
+};
+
+export const getCreateThreadQueryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createThreadQuery>>,
+    TError,
+    { threadUuid: string; data: BodyType<AssistantQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createThreadQuery>>,
+  TError,
+  { threadUuid: string; data: BodyType<AssistantQueryBody> },
+  TContext
+> => {
+  const mutationKey = ["createThreadQuery"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createThreadQuery>>,
+    { threadUuid: string; data: BodyType<AssistantQueryBody> }
+  > = (props) => {
+    const { threadUuid, data } = props ?? {};
+
+    return createThreadQuery(threadUuid, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateThreadQueryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createThreadQuery>>
+>;
+export type CreateThreadQueryMutationBody = BodyType<AssistantQueryBody>;
+export type CreateThreadQueryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a query within a thread
+ */
+export const useCreateThreadQuery = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createThreadQuery>>,
+    TError,
+    { threadUuid: string; data: BodyType<AssistantQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createThreadQuery>>,
+  TError,
+  { threadUuid: string; data: BodyType<AssistantQueryBody> },
+  TContext
+> => {
+  return useMutation(getCreateThreadQueryMutationOptions(options));
+};
+
+/**
+ * @summary Get thread with queries and answers
+ */
+export const getGetThreadDetailUrl = (threadUuid: string) => {
+  return `/api/assistant/thread/${threadUuid}/detail`;
+};
+
+export const getThreadDetail = async (
+  threadUuid: string,
+  options?: RequestInit,
+): Promise<ThreadDetail> => {
+  return customFetch<ThreadDetail>(getGetThreadDetailUrl(threadUuid), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetThreadDetailQueryKey = (threadUuid: string) => {
+  return [`/api/assistant/thread/${threadUuid}/detail`] as const;
+};
+
+export const getGetThreadDetailQueryOptions = <
+  TData = Awaited<ReturnType<typeof getThreadDetail>>,
+  TError = ErrorType<unknown>,
+>(
+  threadUuid: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getThreadDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetThreadDetailQueryKey(threadUuid);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getThreadDetail>>> = ({
+    signal,
+  }) => getThreadDetail(threadUuid, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!threadUuid,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getThreadDetail>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetThreadDetailQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getThreadDetail>>
+>;
+export type GetThreadDetailQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get thread with queries and answers
+ */
+
+export function useGetThreadDetail<
+  TData = Awaited<ReturnType<typeof getThreadDetail>>,
+  TError = ErrorType<unknown>,
+>(
+  threadUuid: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getThreadDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetThreadDetailQueryOptions(threadUuid, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a thread
+ */
+export const getDeleteThreadUrl = (threadUuid: string) => {
+  return `/api/assistant/thread/${threadUuid}/detail`;
+};
+
+export const deleteThread = async (
+  threadUuid: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteThreadUrl(threadUuid), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteThreadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteThread>>,
+    TError,
+    { threadUuid: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteThread>>,
+  TError,
+  { threadUuid: string },
+  TContext
+> => {
+  const mutationKey = ["deleteThread"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteThread>>,
+    { threadUuid: string }
+  > = (props) => {
+    const { threadUuid } = props ?? {};
+
+    return deleteThread(threadUuid, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteThreadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteThread>>
+>;
+
+export type DeleteThreadMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a thread
+ */
+export const useDeleteThread = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteThread>>,
+    TError,
+    { threadUuid: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteThread>>,
+  TError,
+  { threadUuid: string },
+  TContext
+> => {
+  return useMutation(getDeleteThreadMutationOptions(options));
+};
+
+/**
+ * @summary Create a standalone query
+ */
+export const getCreateStandaloneQueryUrl = () => {
+  return `/api/assistant/query`;
+};
+
+export const createStandaloneQuery = async (
+  assistantQueryBody: AssistantQueryBody,
+  options?: RequestInit,
+): Promise<AssistantQuery> => {
+  return customFetch<AssistantQuery>(getCreateStandaloneQueryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(assistantQueryBody),
+  });
+};
+
+export const getCreateStandaloneQueryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStandaloneQuery>>,
+    TError,
+    { data: BodyType<AssistantQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createStandaloneQuery>>,
+  TError,
+  { data: BodyType<AssistantQueryBody> },
+  TContext
+> => {
+  const mutationKey = ["createStandaloneQuery"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createStandaloneQuery>>,
+    { data: BodyType<AssistantQueryBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createStandaloneQuery(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateStandaloneQueryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createStandaloneQuery>>
+>;
+export type CreateStandaloneQueryMutationBody = BodyType<AssistantQueryBody>;
+export type CreateStandaloneQueryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a standalone query
+ */
+export const useCreateStandaloneQuery = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStandaloneQuery>>,
+    TError,
+    { data: BodyType<AssistantQueryBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createStandaloneQuery>>,
+  TError,
+  { data: BodyType<AssistantQueryBody> },
+  TContext
+> => {
+  return useMutation(getCreateStandaloneQueryMutationOptions(options));
+};
+
+/**
+ * @summary Get all independent threads
+ */
+export const getGetIndependentThreadsUrl = () => {
+  return `/api/assistant/threads/independent`;
+};
+
+export const getIndependentThreads = async (
+  options?: RequestInit,
+): Promise<Thread[]> => {
+  return customFetch<Thread[]>(getGetIndependentThreadsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetIndependentThreadsQueryKey = () => {
+  return [`/api/assistant/threads/independent`] as const;
+};
+
+export const getGetIndependentThreadsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getIndependentThreads>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getIndependentThreads>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetIndependentThreadsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getIndependentThreads>>
+  > = ({ signal }) => getIndependentThreads({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getIndependentThreads>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetIndependentThreadsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getIndependentThreads>>
+>;
+export type GetIndependentThreadsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all independent threads
+ */
+
+export function useGetIndependentThreads<
+  TData = Awaited<ReturnType<typeof getIndependentThreads>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getIndependentThreads>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetIndependentThreadsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upload multiple files
+ */
+export const getUploadMultipleFilesUrl = () => {
+  return `/api/assistant/files/upload`;
+};
+
+export const uploadMultipleFiles = async (
+  uploadMultipleFilesBody: UploadMultipleFilesBody,
+  options?: RequestInit,
+): Promise<UploadMultipleFiles201> => {
+  const formData = new FormData();
+  if (uploadMultipleFilesBody.files !== undefined) {
+    uploadMultipleFilesBody.files.forEach((value) =>
+      formData.append(`files`, value),
+    );
+  }
+
+  return customFetch<UploadMultipleFiles201>(getUploadMultipleFilesUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadMultipleFilesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadMultipleFiles>>,
+    TError,
+    { data: BodyType<UploadMultipleFilesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadMultipleFiles>>,
+  TError,
+  { data: BodyType<UploadMultipleFilesBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadMultipleFiles"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadMultipleFiles>>,
+    { data: BodyType<UploadMultipleFilesBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadMultipleFiles(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadMultipleFilesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadMultipleFiles>>
+>;
+export type UploadMultipleFilesMutationBody = BodyType<UploadMultipleFilesBody>;
+export type UploadMultipleFilesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload multiple files
+ */
+export const useUploadMultipleFiles = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadMultipleFiles>>,
+    TError,
+    { data: BodyType<UploadMultipleFilesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadMultipleFiles>>,
+  TError,
+  { data: BodyType<UploadMultipleFilesBody> },
+  TContext
+> => {
+  return useMutation(getUploadMultipleFilesMutationOptions(options));
 };
 
 /**

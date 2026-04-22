@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
 import Layout from "@/components/Layout";
 import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
@@ -17,6 +17,8 @@ import MessagesPage from "@/pages/MessagesPage";
 import BookingsPage from "@/pages/BookingsPage";
 import MembershipPage from "@/pages/MembershipPage";
 import SettingsPage from "@/pages/SettingsPage";
+import FreeToolsPage from "@/pages/FreeToolsPage";
+import ContactUsPage from "@/pages/ContactUsPage";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -28,9 +30,18 @@ const queryClient = new QueryClient({
   },
 });
 
-function AuthTokenSetup() {
+function APIConfig() {
   const { token } = useAuth();
-  setAuthTokenGetter(() => token);
+  
+  // Set Auth Token directly from localStorage to avoid any React closure issues
+  setAuthTokenGetter(() => localStorage.getItem("access_token"));
+  
+  // Set Base URL from .env
+  // NOTE: Generated paths already include the '/api' prefix from Orval config,
+  // so we set the base URL to just the host.
+  const apiUrl = import.meta.env.VITE_API_URL || "";
+  setBaseUrl(apiUrl);
+  
   return null;
 }
 
@@ -55,6 +66,8 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
+      <Route path="/dictionary" component={FreeToolsPage} />
+      <Route path="/contact" component={ContactUsPage} />
       <Route path="/dashboard">
         <ProtectedLayout><DashboardPage /></ProtectedLayout>
       </Route>
@@ -87,17 +100,23 @@ function Router() {
   );
 }
 
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
 function App() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <AuthTokenSetup />
-          <Router />
-          <Toaster />
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <GoogleOAuthProvider clientId={clientId}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <APIConfig />
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   );
 }
 

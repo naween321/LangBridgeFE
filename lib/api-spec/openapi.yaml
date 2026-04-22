@@ -255,6 +255,225 @@ paths:
               schema:
                 $ref: "#/components/schemas/ChatMessage"
 
+  # ASSISTANT
+  /assistant/project:
+    get:
+      operationId: getProjects
+      tags: [assistant]
+      summary: Get all projects
+      responses:
+        "200":
+          description: Projects list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+
+  /assistant/project/create:
+    post:
+      operationId: createProject
+      tags: [assistant]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+              required: [name]
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /assistant/project/{projectUuid}/threads:
+    get:
+      operationId: getProjectThreads
+      tags: [assistant]
+      summary: Get threads for a project
+      parameters:
+        - name: projectUuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Threads list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Thread"
+
+  /assistant/project/{projectUuid}/query:
+    post:
+      operationId: createProjectQuery
+      tags: [assistant]
+      summary: Create a query within a project
+      parameters:
+        - name: projectUuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantQueryBody"
+      responses:
+        "201":
+          description: Query created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantQuery"
+
+  /assistant/thread/{threadUuid}/query:
+    post:
+      operationId: createThreadQuery
+      tags: [assistant]
+      summary: Create a query within a thread
+      parameters:
+        - name: threadUuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantQueryBody"
+      responses:
+        "201":
+          description: Query created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantQuery"
+
+  /assistant/thread/{threadUuid}/detail:
+    get:
+      operationId: getThreadDetail
+      tags: [assistant]
+      summary: Get thread with queries and answers
+      parameters:
+        - name: threadUuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Thread detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThreadDetail"
+    delete:
+      operationId: deleteThread
+      tags: [assistant]
+      summary: Delete a thread
+      parameters:
+        - name: threadUuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Thread deleted successfully
+
+  /assistant/query:
+    post:
+      operationId: createStandaloneQuery
+      tags: [assistant]
+      summary: Create a standalone query
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantQueryBody"
+      responses:
+        "201":
+          description: Query created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantQuery"
+  /assistant/threads/independent:
+    get:
+      operationId: getIndependentThreads
+      tags: [assistant]
+      summary: Get all independent threads
+      responses:
+        "200":
+          description: Independent threads list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Thread"
+
+  /assistant/files/upload:
+    post:
+      operationId: uploadMultipleFiles
+      tags: [assistant]
+      summary: Upload multiple files
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "201":
+          description: Files uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        url:
+                          type: string
+                        name:
+                          type: string
+
   # DOCUMENTS
   /documents:
     get:
@@ -1249,3 +1468,119 @@ components:
         paymentMethod:
           type: string
       required: [plan]
+
+    # ASSISTANT SCHEMAS
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, name]
+
+    Thread:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, title]
+
+    AssistantQuery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        threadId:
+          type: string
+          format: uuid
+        context:
+          type: string
+        category:
+          type: string
+          enum: [translate, simplify, recommendation]
+        files:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              url:
+                type: string
+              name:
+                type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        answer:
+          $ref: "#/components/schemas/AssistantAnswer"
+      required: [id, threadId, category]
+
+    AssistantAnswer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        queryId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        documentId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+      required: [id, queryId, text]
+
+    AssistantQueryBody:
+      type: object
+      properties:
+        context:
+          type: string
+        category:
+          type: string
+          enum: [translate, simplify, recommendation]
+        files:
+          type: array
+          items:
+            type: integer
+        thread_title:
+          type: string
+      required: [category]
+
+    ThreadDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+        queries:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssistantQuery"
+      required: [id, title, queries]

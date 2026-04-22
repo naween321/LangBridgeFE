@@ -205,6 +205,149 @@ export const SendMessageResponse = zod.object({
 });
 
 /**
+ * @summary Get all projects
+ */
+export const GetProjectsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  createdAt: zod.string().optional(),
+  updatedAt: zod.string().optional(),
+});
+export const GetProjectsResponse = zod.array(GetProjectsResponseItem);
+
+/**
+ * @summary Create a new project
+ */
+export const CreateProjectBody = zod.object({
+  name: zod.string(),
+});
+
+/**
+ * @summary Get threads for a project
+ */
+export const GetProjectThreadsParams = zod.object({
+  projectUuid: zod.coerce.string().uuid(),
+});
+
+export const GetProjectThreadsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid().optional(),
+  title: zod.string(),
+  createdAt: zod.string().optional(),
+  updatedAt: zod.string().optional(),
+});
+export const GetProjectThreadsResponse = zod.array(
+  GetProjectThreadsResponseItem,
+);
+
+/**
+ * @summary Create a query within a project
+ */
+export const CreateProjectQueryParams = zod.object({
+  projectUuid: zod.coerce.string().uuid(),
+});
+
+export const CreateProjectQueryBody = zod.object({
+  context: zod.string().optional(),
+  category: zod.enum(["translate", "simplify", "recommendation"]),
+  files: zod.array(zod.number()).optional(),
+  thread_title: zod.string().optional(),
+});
+
+/**
+ * @summary Create a query within a thread
+ */
+export const CreateThreadQueryParams = zod.object({
+  threadUuid: zod.coerce.string().uuid(),
+});
+
+export const CreateThreadQueryBody = zod.object({
+  context: zod.string().optional(),
+  category: zod.enum(["translate", "simplify", "recommendation"]),
+  files: zod.array(zod.number()).optional(),
+  thread_title: zod.string().optional(),
+});
+
+/**
+ * @summary Get thread with queries and answers
+ */
+export const GetThreadDetailParams = zod.object({
+  threadUuid: zod.coerce.string().uuid(),
+});
+
+export const GetThreadDetailResponse = zod.object({
+  id: zod.string().uuid(),
+  title: zod.string(),
+  projectId: zod.string().uuid().optional(),
+  queries: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      threadId: zod.string().uuid(),
+      context: zod.string().optional(),
+      category: zod.enum(["translate", "simplify", "recommendation"]),
+      files: zod
+        .array(
+          zod.object({
+            id: zod.number().optional(),
+            url: zod.string().optional(),
+            name: zod.string().optional(),
+          }),
+        )
+        .optional(),
+      createdAt: zod.string().optional(),
+      updatedAt: zod.string().optional(),
+      answer: zod
+        .object({
+          id: zod.string().uuid(),
+          queryId: zod.string().uuid(),
+          text: zod.string(),
+          documentId: zod.string().uuid().optional(),
+          createdAt: zod.string().optional(),
+        })
+        .optional(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a thread
+ */
+export const DeleteThreadParams = zod.object({
+  threadUuid: zod.coerce.string().uuid(),
+});
+
+/**
+ * @summary Create a standalone query
+ */
+export const CreateStandaloneQueryBody = zod.object({
+  context: zod.string().optional(),
+  category: zod.enum(["translate", "simplify", "recommendation"]),
+  files: zod.array(zod.number()).optional(),
+  thread_title: zod.string().optional(),
+});
+
+/**
+ * @summary Get all independent threads
+ */
+export const GetIndependentThreadsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid().optional(),
+  title: zod.string(),
+  createdAt: zod.string().optional(),
+  updatedAt: zod.string().optional(),
+});
+export const GetIndependentThreadsResponse = zod.array(
+  GetIndependentThreadsResponseItem,
+);
+
+/**
+ * @summary Upload multiple files
+ */
+export const UploadMultipleFilesBody = zod.object({
+  files: zod.array(zod.instanceof(File)).optional(),
+});
+
+/**
  * @summary Get all documents for current user
  */
 export const GetDocumentsResponseItem = zod.object({

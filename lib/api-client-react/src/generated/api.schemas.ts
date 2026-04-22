@@ -373,6 +373,97 @@ export interface UpgradeMembershipBody {
   paymentMethod?: string;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Thread {
+  id: string;
+  projectId?: string;
+  title: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type AssistantQueryCategory =
+  (typeof AssistantQueryCategory)[keyof typeof AssistantQueryCategory];
+
+export const AssistantQueryCategory = {
+  translate: "translate",
+  simplify: "simplify",
+  recommendation: "recommendation",
+} as const;
+
+export type AssistantQueryFilesItem = {
+  id?: number;
+  url?: string;
+  name?: string;
+};
+
+export interface AssistantAnswer {
+  id: string;
+  queryId: string;
+  text: string;
+  documentId?: string;
+  createdAt?: string;
+}
+
+export interface AssistantQuery {
+  id: string;
+  threadId: string;
+  context?: string;
+  category: AssistantQueryCategory;
+  files?: AssistantQueryFilesItem[];
+  createdAt?: string;
+  updatedAt?: string;
+  answer?: AssistantAnswer;
+}
+
+export type AssistantQueryBodyCategory =
+  (typeof AssistantQueryBodyCategory)[keyof typeof AssistantQueryBodyCategory];
+
+export const AssistantQueryBodyCategory = {
+  translate: "translate",
+  simplify: "simplify",
+  recommendation: "recommendation",
+} as const;
+
+export interface AssistantQueryBody {
+  context?: string;
+  category: AssistantQueryBodyCategory;
+  files?: number[];
+  thread_title?: string;
+}
+
+export interface ThreadDetail {
+  id: string;
+  title: string;
+  projectId?: string;
+  queries: AssistantQuery[];
+}
+
+export type CreateProjectBody = {
+  name: string;
+};
+
+export type UploadMultipleFilesBody = {
+  files?: Blob[];
+};
+
+export type UploadMultipleFiles201FilesItem = {
+  id?: number;
+  url?: string;
+  name?: string;
+};
+
+export type UploadMultipleFiles201 = {
+  message?: string;
+  files?: UploadMultipleFiles201FilesItem[];
+};
+
 export type GetLawyersParams = {
   specialization?: string;
   language?: string;

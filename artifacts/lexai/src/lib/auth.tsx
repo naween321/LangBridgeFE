@@ -16,8 +16,9 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
+  login: (token: string, refreshToken: string, user: User) => void;
   logout: () => void;
   updateUser: (user: User) => void;
 }
@@ -27,29 +28,36 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("lexai_token");
+    const storedToken = localStorage.getItem("access_token");
+    const storedRefreshToken = localStorage.getItem("refresh_token");
     const storedUser = localStorage.getItem("lexai_user");
     if (storedToken && storedUser) {
       setToken(storedToken);
+      setRefreshToken(storedRefreshToken);
       setUser(JSON.parse(storedUser));
     }
     setIsLoading(false);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newRefreshToken: string, newUser: User) => {
     setToken(newToken);
+    setRefreshToken(newRefreshToken);
     setUser(newUser);
-    localStorage.setItem("lexai_token", newToken);
+    localStorage.setItem("access_token", newToken);
+    localStorage.setItem("refresh_token", newRefreshToken);
     localStorage.setItem("lexai_user", JSON.stringify(newUser));
   };
 
   const logout = () => {
     setToken(null);
+    setRefreshToken(null);
     setUser(null);
-    localStorage.removeItem("lexai_token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     localStorage.removeItem("lexai_user");
   };
 
@@ -59,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, refreshToken, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

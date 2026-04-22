@@ -61,10 +61,20 @@ function isUrl(input: RequestInfo | URL): input is URL {
 }
 
 function applyBaseUrl(input: RequestInfo | URL): RequestInfo | URL {
-  if (!_baseUrl) return input;
-  const url = resolveUrl(input);
+  const url = normalizeUrlString(resolveUrl(input));
+
+  if (!_baseUrl) {
+    if (typeof input === "string") return url;
+    if (isUrl(input)) return new URL(url);
+    return new Request(url, input as Request);
+  }
+
   // Only prepend to relative paths (starting with /)
-  if (!url.startsWith("/")) return input;
+  if (!url.startsWith("/")) {
+    if (typeof input === "string") return url;
+    if (isUrl(input)) return new URL(url);
+    return new Request(url, input as Request);
+  }
 
   const absolute = `${_baseUrl}${url}`;
   if (typeof input === "string") return absolute;
@@ -76,6 +86,17 @@ function resolveUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
   if (isUrl(input)) return input.toString();
   return input.url;
+}
+
+function normalizeUrlString(url: string): string {
+  const [path, query] = url.split("?");
+  const [urlPath, hash] = path.split("#");
+  const normalizedPath = urlPath.endsWith("/") ? urlPath : `${urlPath}/`;
+
+  let result = normalizedPath;
+  if (hash !== undefined) result += `#${hash}`;
+  if (query !== undefined) result += `?${query}`;
+  return result;
 }
 
 function mergeHeaders(...sources: Array<HeadersInit | undefined>): Headers {
@@ -322,6 +343,59 @@ async function parseSuccessBody(
   }
 }
 
+let isRefreshing = false;
+let refreshSubscribers: ((token: string | null) => void)[] = [];
+
+function onRefreshed(token: string | null) {
+  refreshSubscribers.forEach(cb => cb(token));
+  refreshSubscribers = [];
+}
+
+async function handleTokenRefresh(): Promise<string | null> {
+  if (typeof localStorage === "undefined") return null;
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) return null;
+
+  if (isRefreshing) {
+    return new Promise(resolve => {
+      refreshSubscribers.push(resolve);
+    });
+  }
+
+  isRefreshing = true;
+  try {
+    const url = normalizeUrlString(resolveUrl("/api/authentication/token/refresh/"));
+    const refreshUrl = _baseUrl ? `${_baseUrl}${url}` : url;
+    
+    const res = await fetch(refreshUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const newAccess = data.access;
+      localStorage.setItem("access_token", newAccess);
+      onRefreshed(newAccess);
+      return newAccess;
+    } else {
+      throw new Error("Refresh failed");
+    }
+  } catch (err) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("lexai_user");
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    onRefreshed(null);
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
+}
+
 export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
@@ -349,10 +423,14 @@ export async function customFetch<T = unknown>(
     headers.set("accept", DEFAULT_JSON_ACCEPT);
   }
 
-  // Attach bearer token when an auth getter is configured and no
-  // Authorization header has been explicitly provided.
-  if (_authTokenGetter && !headers.has("authorization")) {
-    const token = await _authTokenGetter();
+  if (!headers.has("authorization")) {
+    let token = null;
+    if (_authTokenGetter) {
+      token = await _authTokenGetter();
+    } else if (typeof localStorage !== "undefined") {
+      token = localStorage.getItem("access_token");
+    }
+    
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
@@ -360,7 +438,15 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  let response = await fetch(input, { ...init, method, headers });
+
+  if (response.status === 401 && !requestInfo.url.includes("/token/refresh/")) {
+    const newToken = await handleTokenRefresh();
+    if (newToken) {
+      headers.set("authorization", `Bearer ${newToken}`);
+      response = await fetch(input, { ...init, method, headers });
+    }
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

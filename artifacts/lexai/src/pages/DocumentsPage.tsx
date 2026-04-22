@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
+import { useAuthenticatedQuery } from "@/lib/useAuthenticatedQuery";
 import {
   useGetDocuments, useUploadDocument, useDeleteDocument, useAnalyzeDocument,
   getGetDocumentsQueryKey,
@@ -25,10 +26,15 @@ export default function DocumentsPage() {
   const [analysisResult, setAnalysisResult] = useState<{ docId: number; result: string; action: string } | null>(null);
   const [targetLang, setTargetLang] = useState("Spanish");
 
-  const { data: docs, isLoading } = useGetDocuments({ query: { enabled: !!token } });
-  const upload = useUploadDocument();
-  const remove = useDeleteDocument();
-  const analyze = useAnalyzeDocument();
+  const { data: docs, isLoading } = useAuthenticatedQuery(useGetDocuments, token);
+  
+  const mutationHeaders = {
+    request: { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+  };
+  
+  const upload = useUploadDocument(mutationHeaders);
+  const remove = useDeleteDocument(mutationHeaders);
+  const analyze = useAnalyzeDocument(mutationHeaders);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,7 +107,7 @@ export default function DocumentsPage() {
         <div className="flex justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
-      ) : !docs || (docs as any[]).length === 0 ? (
+      ) : !docs || ((docs as any)?.results || docs).length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border rounded-xl">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-foreground mb-1">No documents yet</h3>
@@ -112,7 +118,7 @@ export default function DocumentsPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {(docs as any[]).map((doc: any) => (
+          {((docs as any)?.results || docs)?.map((doc: any) => (
             <div key={doc.id} className="border border-border rounded-xl bg-card/50 overflow-hidden">
               <div className="p-4 flex items-center gap-4">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

@@ -1,20 +1,21 @@
 import { useAuth } from "@/lib/auth";
 import { useGetUserUsage, useGetChatSessions, useGetDocuments, useGetBookings } from "@workspace/api-client-react";
+import { useAuthenticatedQuery } from "@/lib/useAuthenticatedQuery";
 import { MessageSquare, FileText, Calendar, Crown, ArrowRight, Scale } from "lucide-react";
 import { Link } from "wouter";
 
 export default function DashboardPage() {
   const { user, token } = useAuth();
-  const { data: usage } = useGetUserUsage({ query: { enabled: !!token } });
-  const { data: sessions } = useGetChatSessions({ query: { enabled: !!token } });
-  const { data: docs } = useGetDocuments({ query: { enabled: !!token } });
-  const { data: bookings } = useGetBookings({ query: { enabled: !!token } });
+  const { data: usage } = useAuthenticatedQuery(useGetUserUsage, token);
+  const { data: sessions } = useAuthenticatedQuery(useGetChatSessions, token);
+  const { data: docs } = useAuthenticatedQuery(useGetDocuments, token);
+  const { data: bookings } = useAuthenticatedQuery(useGetBookings, token);
 
-  const recentSessions = (sessions as any[])?.slice(0, 3) || [];
-  const recentDocs = (docs as any[])?.slice(0, 3) || [];
-  const upcomingBookings = (bookings as any[])?.filter((b: any) => b.status === "CONFIRMED" || b.status === "PENDING").slice(0, 3) || [];
+  const recentSessions = ((sessions as any)?.results || sessions as any[])?.slice(0, 3) || [];
+  const recentDocs = ((docs as any)?.results || docs as any[])?.slice(0, 3) || [];
+  const upcomingBookings = ((bookings as any)?.results || bookings as any[])?.filter((b: any) => b.status === "CONFIRMED" || b.status === "PENDING").slice(0, 3) || [];
   const usageData = usage as any;
-  const docsData = docs as any[];
+  const docsData = ((docs as any)?.results || docs as any[]);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

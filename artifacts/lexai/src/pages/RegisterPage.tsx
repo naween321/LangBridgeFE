@@ -39,7 +39,7 @@ export default function RegisterPage() {
         method: "POST",
         body: JSON.stringify({ ...form }),
       });
-      login(data.token, data.user);
+      login(data.token, data.refresh_token || "", data.user);
 
       if (form.role === "LAWYER") {
         try {

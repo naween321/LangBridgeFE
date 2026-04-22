@@ -1,16 +1,68 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, Redirect } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { Scale, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useGoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [, setLocation] = useLocation();
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (codeResponse) => {
+      try {
+        setError("");
+        setLoading(true);
+        // Hit this API just after getting the access token from google
+        const backendUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+        const res = await fetch(`${backendUrl}/api/authentication/google/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: codeResponse.access_token }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to authenticate with backend API");
+        }
+
+        const data = await res.json();
+
+        // Save the access token and user in local storage via the auth provider context
+        const newToken = data.tokens?.access || data.access_token || data.token;
+        const newRefreshToken = data.tokens?.refresh || data.refresh_token || "";
+        
+        // Map backend snake_case to frontend camelCase
+        const userData = data.user || {};
+        const newUser = {
+          id: userData.id || 1,
+          email: userData.email || "user@example.com",
+          firstName: userData.first_name || userData.firstName || "Google",
+          lastName: userData.last_name || userData.lastName || "User",
+          role: userData.role || "NORMAL",
+          membershipPlan: userData.membership_plan || userData.membershipPlan || "FREE"
+        };
+
+        login(newToken, newRefreshToken, newUser);
+        setLocation("/dashboard");
+
+      } catch (err: any) {
+        setError(err.message || "Google Authentication failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (error) => console.log('Login Failed:', error)
+  });
+
+  if (user) {
+    return <Redirect to="/dashboard" />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +73,21 @@ export default function LoginPage() {
         method: "POST",
         body: JSON.stringify(form),
       });
-      login(data.token, data.user);
+
+      const newToken = data.tokens?.access || data.token;
+      const newRefreshToken = data.tokens?.refresh || data.refresh_token || "";
+      
+      const userData = data.user || {};
+      const newUser = {
+        id: userData.id,
+        email: userData.email,
+        firstName: userData.first_name || userData.firstName,
+        lastName: userData.last_name || userData.lastName,
+        role: userData.role || "NORMAL",
+        membershipPlan: userData.membership_plan || userData.membershipPlan || "FREE"
+      };
+
+      login(newToken, newRefreshToken, newUser);
       setLocation("/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed");
@@ -105,16 +171,14 @@ export default function LoginPage() {
           </div>
 
           <button
-            onClick={() => {
-              setError("Google OAuth would be configured with real credentials. Use email/password for now.");
-            }}
+            onClick={() => googleLogin()}
             className="mt-4 w-full py-2.5 rounded-lg border border-border text-foreground font-medium text-sm hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
             Continue with Google
           </button>
