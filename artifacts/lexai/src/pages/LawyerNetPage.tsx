@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useGetLawyers, useGetLawyerStats } from "@workspace/api-client-react";
-import { useAuth } from "@/lib/auth";
+import { useGetLawyerList, useGetLawyerStats } from "@/hooks/useLawyerApi";
 import { Link } from "wouter";
 import { Star, Search, Users, Loader2, Globe } from "lucide-react";
 
@@ -8,23 +7,19 @@ const SPECIALIZATIONS = ["All", "Corporate Law", "Criminal Defense", "Family Law
 const LANGUAGES = ["All", "English", "Spanish", "French", "Arabic", "Chinese"];
 
 export default function LawyerNetPage() {
-  const { token } = useAuth();
   const [search, setSearch] = useState("");
   const [spec, setSpec] = useState("All");
   const [lang, setLang] = useState("All");
   const [minRating, setMinRating] = useState("");
 
-  const { data: lawyers, isLoading } = useGetLawyers(
-    {
-      specialization: spec !== "All" ? spec : undefined,
-      language: lang !== "All" ? lang : undefined,
-      search: search || undefined,
-      minRating: minRating ? parseFloat(minRating) : undefined,
-    },
-    { query: { enabled: !!token } }
-  );
+  const { data: lawyers, isLoading } = useGetLawyerList({
+    specialization: spec !== "All" ? spec : undefined,
+    language: lang !== "All" ? lang : undefined,
+    search: search || undefined,
+    minRating: minRating ? parseFloat(minRating) : undefined,
+  });
 
-  const { data: stats } = useGetLawyerStats({ query: { enabled: !!token } });
+  const { data: stats } = useGetLawyerStats();
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -36,11 +31,11 @@ export default function LawyerNetPage() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="p-4 rounded-xl border border-border bg-card/50">
-            <p className="text-2xl font-bold text-primary">{(stats as any).totalLawyers}</p>
+            <p className="text-2xl font-bold text-primary">{stats.totalLawyers}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Verified Lawyers</p>
           </div>
           <div className="p-4 rounded-xl border border-border bg-card/50">
-            <p className="text-2xl font-bold text-primary">{(stats as any).averageRating?.toFixed(1) || "N/A"}</p>
+            <p className="text-2xl font-bold text-primary">{stats.averageRating.toFixed(1) || "N/A"}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Average Rating</p>
           </div>
         </div>
@@ -72,7 +67,7 @@ export default function LawyerNetPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-      ) : !lawyers || (lawyers as any[]).length === 0 ? (
+      ) : !lawyers || lawyers.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border rounded-xl">
           <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
           <h3 className="font-semibold text-foreground mb-1">No lawyers found</h3>
@@ -80,7 +75,7 @@ export default function LawyerNetPage() {
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {(lawyers as any[]).map((l: any) => (
+          {lawyers.map(l => (
             <Link key={l.id} href={`/lawyernet/${l.id}`} className="block p-5 rounded-xl border border-border bg-card/50 hover:border-primary/40 hover:bg-card transition-all group">
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-lg shrink-0">
@@ -100,20 +95,22 @@ export default function LawyerNetPage() {
               </div>
 
               <div className="flex items-center gap-1.5 mb-3">
-                {[1,2,3,4,5].map(n => (
-                  <Star key={n} className={`w-3.5 h-3.5 ${n <= Math.round(l.rating || 0) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+                {[1, 2, 3, 4, 5].map(n => (
+                  <Star key={n} className={`w-3.5 h-3.5 ${n <= Math.round(l.rating) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
                 ))}
-                <span className="text-xs text-muted-foreground ml-1">{(l.rating || 0).toFixed(1)} ({l.reviewCount || 0})</span>
+                <span className="text-xs text-muted-foreground ml-1">{l.rating.toFixed(1)} ({l.reviewCount})</span>
               </div>
 
               <div className="space-y-1.5 text-xs text-muted-foreground">
                 <div>
                   <span className="font-medium text-foreground">{l.yearsOfExperience}y</span> experience
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5" />
-                  {l.languages?.slice(0, 3).join(", ")}
-                </div>
+                {l.languages && l.languages.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5" />
+                    {l.languages.slice(0, 3).join(", ")}
+                  </div>
+                )}
                 {l.hourlyRate && (
                   <div className="font-medium text-primary">${l.hourlyRate}/hr</div>
                 )}

@@ -83,6 +83,7 @@ export async function apiFetch(path: string, token: string | null, options: Requ
         });
         
         if (res.ok) {
+          if (res.status === 204) return null;
           return res.json();
         }
       } else {
@@ -92,5 +93,6 @@ export async function apiFetch(path: string, token: string | null, options: Requ
     const err = await res.json().catch(() => ({ error: "Request failed" }));
     throw new Error(err.error || "Request failed");
   }
+  if (res.status === 204) return null;
   return res.json();
 }

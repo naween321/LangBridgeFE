@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useGetUserProfile, useUpdateUserProfile, useCreateLawyerProfile } from "@workspace/api-client-react";
-import { User, Globe, Lock, Shield, Save, Loader2, CheckCircle } from "lucide-react";
+import { User, Globe, Lock, Shield, Save, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
 const LANGUAGES = ["English", "Spanish", "French", "Arabic", "Chinese"];
 const SPECIALIZATIONS = ["Corporate Law", "Criminal Defense", "Family Law", "Immigration", "Intellectual Property", "Real Estate", "Employment Law", "Tax Law", "Personal Injury", "Contract Law"];
@@ -10,6 +10,7 @@ export default function SettingsPage() {
   const { token, user, updateUser } = useAuth();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [upgradeStatus, setUpgradeStatus] = useState<string | null>(null);
 
   const { data: profile } = useGetUserProfile({ query: { enabled: !!token } });
   const updateProfile = useUpdateUserProfile();
@@ -34,6 +35,35 @@ export default function SettingsPage() {
       });
     }
   }, [profile]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const upgrade = params.get("upgrade");
+    if (upgrade) {
+      setUpgradeStatus(upgrade);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const handleUpgrade = async () => {
+    try {
+      setSaving(true);
+      const res = await fetch("http://127.0.0.1:8000/api/user/membership/create-checkout-session/", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "Failed to create checkout session");
+      }
+    } catch (e) {
+      alert("Something went wrong");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +99,20 @@ export default function SettingsPage() {
         <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2 text-sm text-green-400">
           <CheckCircle className="w-4 h-4" />
           Changes saved successfully
+        </div>
+      )}
+      
+      {upgradeStatus === 'success' && (
+        <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2 text-sm text-green-400">
+          <CheckCircle className="w-4 h-4" />
+          Thank you! Your membership has been successfully upgraded to Premium.
+        </div>
+      )}
+      
+      {upgradeStatus === 'canceled' && (
+        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-sm text-red-400">
+          <AlertCircle className="w-4 h-4" />
+          Checkout was canceled.
         </div>
       )}
 
@@ -231,6 +275,16 @@ export default function SettingsPage() {
               <p className="text-sm font-medium text-foreground">Membership</p>
               <p className="text-sm text-muted-foreground">{user?.membershipPlan === "PREMIUM" ? "Premium" : "Free Plan"}</p>
             </div>
+            {user?.membershipPlan !== "PREMIUM" && (
+              <button 
+                onClick={handleUpgrade}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg gold-gradient text-primary-foreground text-xs font-bold uppercase tracking-wider hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
+              >
+                {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+                Upgrade to Premium
+              </button>
+            )}
           </div>
         </div>
       </div>

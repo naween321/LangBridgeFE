@@ -35,21 +35,28 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
+      const payload = form.role === "LAWYER"
+        ? { ...form, ...lawyerForm }
+        : { ...form };
+
       const data = await apiFetch("/auth/register", null, {
         method: "POST",
-        body: JSON.stringify({ ...form }),
+        body: JSON.stringify(payload),
       });
-      login(data.token, data.refresh_token || "", data.user);
 
-      if (form.role === "LAWYER") {
-        try {
-          await apiFetch("/users/lawyer-profile", data.token, {
-            method: "POST",
-            body: JSON.stringify(lawyerForm),
-          });
-        } catch {}
-      }
+      const accessToken = data.tokens?.access || data.token || "";
+      const refreshToken = data.tokens?.refresh || data.refresh_token || "";
+      const userData = data.user || {};
+      const newUser = {
+        id: userData.id,
+        email: userData.email,
+        firstName: userData.firstName || userData.first_name || "",
+        lastName: userData.lastName || userData.last_name || "",
+        role: (userData.role || form.role || "NORMAL") as "NORMAL" | "LAWYER",
+        membershipPlan: (userData.membershipPlan || "FREE") as "FREE" | "PREMIUM",
+      };
 
+      login(accessToken, refreshToken, newUser);
       setLocation("/dashboard");
     } catch (err: any) {
       setError(err.message || "Registration failed");

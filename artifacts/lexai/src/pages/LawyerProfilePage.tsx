@@ -1,59 +1,35 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
-import {
-  useGetLawyer, useGetLawyerReviews, useAddLawyerReview, useGetLawyerAvailability,
-  useCreateBooking, useStartConversation,
-  getGetLawyerReviewsQueryKey,
-} from "@workspace/api-client-react";
-import { useAuth } from "@/lib/auth";
-import { useQueryClient } from "@tanstack/react-query";
+import { useGetLawyerDetail, useGetLawyerReviews, useAddLawyerReview, type LawyerReview } from "@/hooks/useLawyerApi";
+import { useCreateConversation } from "@/hooks/useChatApi";
 import { Star, Globe, Calendar, MessageSquare, Shield, Loader2, X, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 
 export default function LawyerProfilePage() {
   const params = useParams<{ id: string }>();
   const lawyerId = parseInt(params.id || "0");
-  const { token, user } = useAuth();
   const [, setLocation] = useLocation();
-  const qc = useQueryClient();
 
   const [showBooking, setShowBooking] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [review, setReview] = useState({ rating: 5, comment: "" });
   const [bookingNote, setBookingNote] = useState("");
 
-  const { data: lawyer, isLoading } = useGetLawyer(lawyerId, { query: { enabled: !!lawyerId } });
-  const { data: reviews } = useGetLawyerReviews(lawyerId, { query: { enabled: !!lawyerId } });
-  const { data: slots } = useGetLawyerAvailability(lawyerId, {}, { query: { enabled: !!lawyerId } });
+  const { data: lawyer, isLoading } = useGetLawyerDetail(lawyerId);
+  const { data: reviews } = useGetLawyerReviews(lawyerId);
   const addReview = useAddLawyerReview();
-  const createBooking = useCreateBooking();
-  const startConversation = useStartConversation();
-
-  const lawyerData = lawyer as any;
-  const reviewsData = reviews as any[];
-  const slotsData = slots as any[];
+  const createConversation = useCreateConversation();
 
   const handleChat = async () => {
     try {
-      await startConversation.mutateAsync({ data: { lawyerId, initialMessage: "Hello, I'd like to discuss my legal matter with you." } });
+      await createConversation.mutateAsync(lawyerId);
       setLocation("/messages");
-    } catch {}
-  };
-
-  const handleBook = async () => {
-    if (!selectedSlot) return;
-    try {
-      await createBooking.mutateAsync({ data: { lawyerId, scheduledAt: selectedSlot, duration: 60, notes: bookingNote } });
-      setShowBooking(false);
-      setLocation("/bookings");
     } catch {}
   };
 
   const handleReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    await addReview.mutateAsync({ lawyerId, data: review });
-    qc.invalidateQueries({ queryKey: getGetLawyerReviewsQueryKey(lawyerId) });
+    await addReview.mutateAsync({ lawyerId, rating: review.rating, comment: review.comment });
     setShowReview(false);
     setReview({ rating: 5, comment: "" });
   };
@@ -61,7 +37,7 @@ export default function LawyerProfilePage() {
   if (isLoading) {
     return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
-  if (!lawyerData) {
+  if (!lawyer) {
     return <div className="p-6 text-muted-foreground">Lawyer not found</div>;
   }
 
@@ -75,32 +51,32 @@ export default function LawyerProfilePage() {
       <div className="p-6 rounded-xl border border-border bg-card/50 mb-6">
         <div className="flex gap-5">
           <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl shrink-0">
-            {lawyerData.firstName?.[0]}{lawyerData.lastName?.[0]}
+            {lawyer.firstName?.[0]}{lawyer.lastName?.[0]}
           </div>
           <div className="flex-1">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-xl font-bold text-foreground">{lawyerData.firstName} {lawyerData.lastName}</h1>
-                <p className="text-sm text-muted-foreground">{lawyerData.specialization}</p>
-                {lawyerData.verificationStatus === "APPROVED" && (
+                <h1 className="text-xl font-bold text-foreground">{lawyer.firstName} {lawyer.lastName}</h1>
+                <p className="text-sm text-muted-foreground">{lawyer.specialization}</p>
+                {lawyer.verificationStatus === "APPROVED" && (
                   <div className="flex items-center gap-1.5 mt-1">
                     <Shield className="w-3.5 h-3.5 text-green-400" />
                     <span className="text-xs text-green-400 font-medium">Verified Attorney</span>
                   </div>
                 )}
               </div>
-              {lawyerData.hourlyRate && (
+              {lawyer.hourlyRate && (
                 <div className="text-right">
-                  <span className="text-2xl font-bold text-primary">${lawyerData.hourlyRate}</span>
+                  <span className="text-2xl font-bold text-primary">${lawyer.hourlyRate}</span>
                   <p className="text-xs text-muted-foreground">/hour</p>
                 </div>
               )}
             </div>
             <div className="flex items-center gap-1.5 mt-3">
-              {[1,2,3,4,5].map(n => (
-                <Star key={n} className={`w-4 h-4 ${n <= Math.round(lawyerData.rating || 0) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
+              {[1, 2, 3, 4, 5].map(n => (
+                <Star key={n} className={`w-4 h-4 ${n <= Math.round(lawyer.rating) ? "text-primary fill-primary" : "text-muted-foreground"}`} />
               ))}
-              <span className="text-sm text-muted-foreground ml-1">{(lawyerData.rating || 0).toFixed(1)} ({lawyerData.reviewCount || 0} reviews)</span>
+              <span className="text-sm text-muted-foreground ml-1">{lawyer.rating.toFixed(1)} ({lawyer.reviewCount} reviews)</span>
             </div>
           </div>
         </div>
@@ -108,35 +84,43 @@ export default function LawyerProfilePage() {
         <div className="grid grid-cols-2 gap-4 mt-5 pt-5 border-t border-border">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Experience</p>
-            <p className="text-sm font-semibold text-foreground">{lawyerData.yearsOfExperience} years</p>
+            <p className="text-sm font-semibold text-foreground">{lawyer.yearsOfExperience} years</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Languages</p>
-            <div className="flex items-center gap-1.5">
-              <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-              <p className="text-sm font-semibold text-foreground">{lawyerData.languages?.join(", ")}</p>
+          {lawyer.languages && lawyer.languages.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Languages</p>
+              <div className="flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                <p className="text-sm font-semibold text-foreground">{lawyer.languages.join(", ")}</p>
+              </div>
             </div>
-          </div>
-          {lawyerData.barNumber && (
+          )}
+          {lawyer.barNumber && (
             <div>
               <p className="text-xs text-muted-foreground mb-1">Bar Number</p>
-              <p className="text-sm font-semibold text-foreground">{lawyerData.barNumber}</p>
+              <p className="text-sm font-semibold text-foreground">{lawyer.barNumber}</p>
+            </div>
+          )}
+          {lawyer.age && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Age</p>
+              <p className="text-sm font-semibold text-foreground">{lawyer.age}</p>
             </div>
           )}
         </div>
 
-        {lawyerData.bio && (
-          <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{lawyerData.bio}</p>
+        {lawyer.bio && (
+          <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{lawyer.bio}</p>
         )}
 
         <div className="flex gap-3 mt-5">
           <button
             onClick={handleChat}
-            disabled={startConversation.isPending}
+            disabled={createConversation.isPending}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
           >
             <MessageSquare className="w-4 h-4" />
-            {startConversation.isPending ? "Starting..." : "Chat with Lawyer"}
+            {createConversation.isPending ? "Starting…" : "Chat with Lawyer"}
           </button>
           <button
             onClick={() => setShowBooking(true)}
@@ -156,21 +140,21 @@ export default function LawyerProfilePage() {
             Write a Review
           </button>
         </div>
-        {!reviewsData || reviewsData.length === 0 ? (
+        {!reviews || reviews.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">No reviews yet</p>
         ) : (
           <div className="space-y-4">
-            {reviewsData.map((r: any) => (
+            {reviews.map((r: LawyerReview) => (
               <div key={r.id} className="pb-4 border-b border-border last:border-0 last:pb-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-medium text-foreground">{r.userName || "Anonymous"}</span>
                   <div className="flex items-center gap-0.5">
-                    {[1,2,3,4,5].map(n => (
+                    {[1, 2, 3, 4, 5].map(n => (
                       <Star key={n} className={`w-3 h-3 ${n <= r.rating ? "text-primary fill-primary" : "text-muted-foreground"}`} />
                     ))}
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">{r.comment}</p>
+                {r.comment && <p className="text-sm text-muted-foreground">{r.comment}</p>}
                 <p className="text-xs text-muted-foreground mt-1">{new Date(r.createdAt).toLocaleDateString()}</p>
               </div>
             ))}
@@ -178,7 +162,7 @@ export default function LawyerProfilePage() {
         )}
       </div>
 
-      {/* Booking Modal */}
+      {/* Booking Modal (stub — no availability backend yet) */}
       {showBooking && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md">
@@ -188,48 +172,29 @@ export default function LawyerProfilePage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">Select an available time slot</p>
-            <div className="grid grid-cols-2 gap-2 mb-4 max-h-48 overflow-y-auto">
-              {slotsData?.filter((s: any) => s.available).map((s: any, i: number) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedSlot(s.startTime)}
-                  className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                    selectedSlot === s.startTime ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground hover:border-primary/40"
-                  }`}
-                >
-                  {new Date(s.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </button>
-              ))}
-              {(!slotsData || slotsData.filter((s: any) => s.available).length === 0) && (
-                <p className="text-xs text-muted-foreground col-span-2 text-center py-4">No available slots. Any time works for this demo.</p>
-              )}
-            </div>
-            {!selectedSlot && (
-              <button
-                onClick={() => setSelectedSlot(new Date(Date.now() + 3600000).toISOString())}
-                className="w-full mb-2 px-3 py-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
-              >
-                Use next available time
-              </button>
-            )}
+            <p className="text-sm text-muted-foreground mb-4">
+              Send a meeting request to <strong>{lawyer.firstName} {lawyer.lastName}</strong>.
+            </p>
             <textarea
               value={bookingNote}
               onChange={e => setBookingNote(e.target.value)}
-              placeholder="Notes for the lawyer (optional)..."
+              placeholder="Describe your legal matter (optional)..."
               className="w-full px-3 py-2.5 rounded-lg bg-background border border-input text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none mb-4"
-              rows={2}
+              rows={3}
             />
             <div className="flex gap-2">
               <button onClick={() => setShowBooking(false)} className="flex-1 py-2.5 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-secondary/80">
                 Cancel
               </button>
               <button
-                onClick={handleBook}
-                disabled={!selectedSlot || createBooking.isPending}
+                onClick={async () => {
+                  await handleChat();
+                  setShowBooking(false);
+                }}
+                disabled={createConversation.isPending}
                 className="flex-1 py-2.5 rounded-lg gold-gradient text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60"
               >
-                {createBooking.isPending ? "Booking..." : "Confirm Booking"}
+                {createConversation.isPending ? "Opening chat…" : "Message Lawyer"}
               </button>
             </div>
           </div>
@@ -250,7 +215,7 @@ export default function LawyerProfilePage() {
               <div>
                 <label className="block text-xs font-medium text-foreground mb-2">Rating</label>
                 <div className="flex gap-1">
-                  {[1,2,3,4,5].map(n => (
+                  {[1, 2, 3, 4, 5].map(n => (
                     <button key={n} type="button" onClick={() => setReview(r => ({ ...r, rating: n }))}>
                       <Star className={`w-7 h-7 transition-colors ${n <= review.rating ? "text-primary fill-primary" : "text-muted-foreground hover:text-primary"}`} />
                     </button>

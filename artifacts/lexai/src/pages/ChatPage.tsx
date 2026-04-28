@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/lib/auth";
 import { useAuthenticatedQuery } from "@/lib/useAuthenticatedQuery";
+import FileViewer, { canPreview } from "@/components/FileViewer";
 import {
   useGetProjects, useCreateProject, useGetProjectThreads,
   useGetThreadDetail, useCreateThreadQuery, useCreateProjectQuery,
@@ -17,6 +18,7 @@ import {
   Library, Sparkles, Languages, Zap, Lightbulb
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ChatPage() {
   const { token } = useAuth();
@@ -34,6 +36,7 @@ export default function ChatPage() {
   const [uploadedFiles, setUploadedFiles] = useState<{id: number, name: string}[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState("Spanish");
+  const [viewerFile, setViewerFile] = useState<{ url: string; fileName: string; extension: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -146,40 +149,42 @@ export default function ChatPage() {
 
   const handleSend = async () => {
     if ((!input.trim() && uploadedFiles.length === 0) || sending) return;
-    let content = input.trim();
-    if (category === "translate" && uploadedFiles.length > 0) {
-      const prefix = `Please analyze and render the full content of the attached document(s) in ${targetLanguage}, preserving all legal terms, clauses, and structure so I can understand them in ${targetLanguage}.`;
-      content = content ? `${prefix} Additional instructions: ${content}` : prefix;
-    }
+    const content = input.trim();
     setInput("");
     setSending(true);
 
-    try {
+    const queryData = {
+      context: content || null,
+      category,
+      files: uploadedFiles.map(f => f.id),
+      ...(category === "translate" ? { target_language: targetLanguage } : {}),
+    };
 
+    try {
       if (selectedThread) {
-        // Continue existing thread
         await createThreadQuery.mutateAsync({
           threadUuid: selectedThread.toString(),
-          data: { context: content, category, files: uploadedFiles.map(f => f.id) }
+          data: queryData as any,
         });
         qc.invalidateQueries({ queryKey: getGetThreadDetailQueryKey(selectedThread.toString()) });
       } else if (selectedProject) {
-        // Start new thread in project
         const result = await createProjectQuery.mutateAsync({
           projectUuid: selectedProject.toString(),
-          data: { context: content, category, files: uploadedFiles.map(f => f.id), thread_title: content ? content.slice(0, 30) + "..." : "Document Analysis" } as any
+          data: {
+            ...queryData,
+            thread_title: content ? content.slice(0, 40) + "..." : `${targetLanguage} Translation`,
+          } as any,
         });
         setSelectedThread((result as any).thread);
         qc.invalidateQueries({ queryKey: getGetProjectThreadsQueryKey(selectedProject.toString()) });
       } else {
-        // Standalone query
         const result = await createStandaloneQuery.mutateAsync({
-          data: { context: content, category, files: uploadedFiles.map(f => f.id) }
+          data: queryData as any,
         });
         setSelectedThread((result as any).thread);
         qc.invalidateQueries({ queryKey: getGetIndependentThreadsQueryKey() });
       }
-      setUploadedFiles([]); // clear docs after send
+      setUploadedFiles([]);
     } catch (err) {
       console.error("Failed to send query", err);
     }
@@ -195,6 +200,14 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full bg-background overflow-hidden relative">
+      {viewerFile && (
+        <FileViewer
+          url={viewerFile.url}
+          fileName={viewerFile.fileName}
+          extension={viewerFile.extension}
+          onClose={() => setViewerFile(null)}
+        />
+      )}
       {/* 1. Project Sidebar (Left) */}
       <div className="w-16 lg:w-64 flex flex-col border-r border-border bg-card/40 backdrop-blur-xl shrink-0 z-20 transition-all duration-300">
         <div className="p-4 border-b border-border flex items-center justify-between">
@@ -364,18 +377,31 @@ export default function ChatPage() {
                         
                         {q.files && q.files.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
-                            {q.files.map((f: any) => (
-                              <a 
-                                key={f.id}
-                                href={f.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/30 transition-colors text-[10px] font-bold max-w-[200px]"
-                              >
-                                <FileText className="w-3 h-3 shrink-0" />
-                                <span className="truncate">{f.name}</span>
-                              </a>
-                            ))}
+                            {q.files.map((f: any) => {
+                              const ext = f.name.split('.').pop() || '';
+                              const commonCls = "flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/30 transition-colors text-[10px] font-bold max-w-[200px]";
+                              return canPreview(ext) ? (
+                                <button
+                                  key={f.id}
+                                  onClick={() => setViewerFile({ url: f.url, fileName: f.name, extension: ext })}
+                                  className={commonCls}
+                                >
+                                  <FileText className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{f.name}</span>
+                                </button>
+                              ) : (
+                                <a
+                                  key={f.id}
+                                  href={f.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={commonCls}
+                                >
+                                  <FileText className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{f.name}</span>
+                                </a>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -399,7 +425,39 @@ export default function ChatPage() {
                           </div>
                           <div className="bg-card border border-border px-5 py-4 rounded-2xl rounded-tl-none shadow-sm text-sm leading-relaxed text-foreground w-full overflow-hidden">
                             <div className="legal-prose">
-                              <ReactMarkdown>
+                              <ReactMarkdown
+                                components={{
+                                  a: ({ node, ...props }) => {
+                                    const href = props.href || "";
+                                    const ext = href.split('.').pop() || "";
+                                    if (canPreview(ext)) {
+                                      return (
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            setViewerFile({
+                                              url: href,
+                                              fileName: href.split('/').pop() || "document",
+                                              extension: ext,
+                                            });
+                                          }}
+                                          className="text-primary underline decoration-primary/50 hover:opacity-80 transition-opacity"
+                                        >
+                                          {props.children}
+                                        </button>
+                                      );
+                                    }
+                                    return (
+                                      <a
+                                        {...props}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary underline decoration-primary/50 hover:opacity-80 transition-opacity"
+                                      />
+                                    );
+                                  }
+                                }}
+                              >
                                 {q.answer.text}
                               </ReactMarkdown>
                             </div>
@@ -452,22 +510,25 @@ export default function ChatPage() {
                   {category === "translate" && (
                     <div className="flex items-center gap-1.5 ml-1">
                       <Languages className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                      <select
-                        value={targetLanguage}
-                        onChange={(e) => setTargetLanguage(e.target.value)}
-                        className="text-xs font-semibold bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-foreground cursor-pointer"
-                      >
-                        {[
-                          "Spanish", "French", "German", "Italian", "Portuguese",
-                          "Chinese (Simplified)", "Chinese (Traditional)", "Japanese",
-                          "Korean", "Arabic", "Russian", "Hindi", "Dutch",
-                          "Swedish", "Norwegian", "Danish", "Finnish", "Polish",
-                          "Turkish", "Vietnamese", "Thai", "Indonesian", "Malay",
-                          "Nepali", "Urdu", "Bengali", "Swahili"
-                        ].map(lang => (
-                          <option key={lang} value={lang}>{lang}</option>
-                        ))}
-                      </select>
+                      <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+                        <SelectTrigger className="h-8 text-xs font-semibold bg-blue-500/10 border-blue-500/20 rounded-full px-3 w-[150px] focus:ring-2 focus:ring-blue-500/30">
+                          <SelectValue placeholder="Language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            "Spanish", "French", "German", "Italian", "Portuguese",
+                            "Chinese (Simplified)", "Chinese (Traditional)", "Japanese",
+                            "Korean", "Arabic", "Russian", "Hindi", "Dutch",
+                            "Swedish", "Norwegian", "Danish", "Finnish", "Polish",
+                            "Turkish", "Vietnamese", "Thai", "Indonesian", "Malay",
+                            "Nepali", "Urdu", "Bengali", "Swahili"
+                          ].map(lang => (
+                            <SelectItem key={lang} value={lang} className="text-xs">
+                              {lang}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
                 </div>
